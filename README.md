@@ -1,233 +1,612 @@
-# Zabbix templates
-[![License: GPL v2](https://img.shields.io/badge/License-GPL%20v2-blue.svg)](https://www.gnu.org/licenses/old-licenses/gpl-2.0.en.html)
+-- JFA MIB ESPECIFICATION
+--
 
-This repository provides a set of templates which offers the alternative set of templates to supplied by Zabbix.
+JFA-MIB DEFINITIONS ::= BEGIN
 
-On [master](https://github.com/kloczek/zabbix-templates) branch is last stable version of the templates. Please report eny found issues or bugs.
+IMPORTS
+   MODULE-IDENTITY,enterprises, 
+   IpAddress ,Integer32		   				FROM SNMPv2-SMI
+   -- Gauge, TimeTicks     						FROM RFC1155-SMI
+   DisplayString                                FROM SNMPv2-TC
+   OBJECT-TYPE                                  FROM RFC-1212
+   NOTIFICATION-TYPE                        	FROM SNMPv2-SMI
+   -- TRAP-TYPE                                 FROM RFC-1215
+   SnmpSecurityModel,
+   SnmpMessageProcessingModel,
+   SnmpSecurityLevel,
+   SnmpAdminString				      			FROM SNMP-FRAMEWORK-MIB
+   KeyChange									FROM SNMP-USER-BASED-SM-MIB
+   TEXTUAL-CONVENTION							FROM SNMPv2-TC
+   MODULE-COMPLIANCE, OBJECT-GROUP , 
+   NOTIFICATION-GROUP      						FROM SNMPv2-CONF;
 
-Development of the next version of the templates is done on [devel](https://github.com/kloczek/zabbix-templates/tree/devel) branch.
+jfaInfo MODULE-IDENTITY
+    LAST-UPDATED "201909130000Z"
+    ORGANIZATION "JFA"
+    CONTACT-INFO
+                  "jfaeletronicos.com"
+    DESCRIPTION
+        "Arquivo MIB para fonte gerenciável"
 
-If you have some changes for those templates please submit PR against **[devel](https://github.com/kloczek/zabbix-templates/tree/devel)**.
+	REVISION 	"202106290000Z"
+	DESCRIPTION
+        "The MIB module for SMIv2."
+    ::= { jfa 1 }   
+   
+jfa                   OBJECT IDENTIFIER ::=  { enterprises 17095 }
 
-## Table of Contents
-***
-- [Changelog](#changelog)
-  * [1.0.4](#104-2018-06-11)
-- [List of templates](#list-of-templates)
-- [Notes and Guidlines](#notes-and-guidelines)
-- [Copyright](#copyright--c--2017-2018-tomasz-k-oczko--kloczek-fedoraprojectorg)
-***
-## Changelog:
-### 1.0.4 (2018-06-11)
-- The first version tagged in git repo to stamp state of templates and tools and to provide better tracking changes by using ```git``` command
-- The development of the next versions of the templates will continue on devel branch. When all changes are ready devel branch will be merged to master one. It will be way better for those who have interested enough tested template.
-- Recent changes
-  - All templates:
-    - change all graphs resolution to 1200x300
-  - **ICMP**
-    - Screens: 
-      - new ```NET::ICMP```
-  - **MIB**
-    - changed all description OID trees URLs to http://www.oidview.com/mibs/ based (http://support.ipmonitor.com seems no longer available)
-    - **IF-MIB**
-      - Applications:
-        - the new prototype for all ```interfaces``` LLD prototype items
-          ```IF-MIB::interfaces::{#IFDESCR}```
-      - LLDs:
-        - new ```interfaces``` LLD
-          ```discovery[{#IFDESCR},IF-MIB::ifDescr,{#IFOPERSTATUS},IF-MIB::ifOperStatus]```
-          and added filter to remove from the list all interfaces with
-          ifOperStatus=Down state. Switch from {#SNMPVALUE} to {#IFDESCR} as macro
-          indexing all prototype items
-      - Screens:
-        - new:
-          - ```IF-MIB::ifHCOctets```
-          - ```IF-MIB::ifOctets```
-    - **SNMPv2-MIB**
-      - Applications:
-        - rename mib-2.system to ```SNMPv2-MIB::system``` and mib-2.system.snmp to '''SNMPv2-MIB::snmp''' to use matching MIB naming conventoion
-      - Items:
-        - changed units in update interval from number of seconds to number of m/h/d
-      - Graphs:
-        - new normal graph ```SNMPv2-MIB::snmpPkts``` with SNMPv2-MIB::snmp{in,Out}Pkts OIDs presenting rate
-          of SNMP requests/replies
-  - **OS Linux**
-    - Items:
-      - added ```MEM::``` items descriptions
-      - fixed ```NET::segments retransmitted``` item use new sed regexp in this item
-        ```s/\( *\)\(.*\) segments retransmitted*/\2/ p/```
-    - Triggers:
-      - fixed typo in name: s/SYS:uname changed/```SYS::uname changed```/
-      - rename "Lack of free memory" to ```MEM::free {ITEM.LASTVALUE}```
-      - use ```diff()```=1 function (instead ```change()``` and ```str()```) in triggers:
-        - ```HW::devices list has been changed```
-        - ```HW::CPU info has changed```
-  - **OS Solaris**
-    - Triggers:
-      - fixed typo in trigger name s/SYS:uname changed/```SYS::uname changed```/
-      - added ```MEM::free {ITEM.LASTVALUE}```
-  - **OS Windows**
-    - Triggers:
-      - rename trigger to the same name as it is in other OS templates
-         s/Host information was changed/```SYS:uname changed```/
-      - rename "Lack of free memory" to ```MEM::free {ITEM.LASTVALUE}```
-  - **Service MySQL**
-    - Applications:
-      - new:
-      - ```SVC::MySQL::cfg``` for all read configuration parameters
-      - ```SVC::MySQL::Com``` for all Com_* metrics
-      - ```SVC::MySQL::DB::{#DB}``` prototype for all per database metrics
-      -  ```SVC::MySQL::innodb``` for all innodb storage engine metrics
-      - ```SVC::MySQL::threads``` for all treads related metrics
-    - Graphs:
-      - new ```SVC::MySQL::threads``` with ```Threads_cached```, ```Threads_connected``` and ```Threads_running``` metrics
-    - Items:
-      - new ```max_allowed_packet``` - the maximum size of one packet or any generated/intermediate string
-      - new ```show_compatibility_56``` - show is MySQL engine running in MySQL 5.6 compatibility mode is ON/OFF
-      - new ```Threads_cached``` - the number of threads in the thread cache
-      - mew ```Threads_running``` - the number of threads that are not sleeping
-      - rewrite most of the items SQL queries to use uppercase SQL keywords and lowercase for table names and row names (this will cause problems with imprt new template b
-ut I need to standarize thuis before first officially announced release of the templates)
-    - Screens:
-      - new ```SVC::MySQL::threads``` which combines ```SVC::MySQL::threads``` graph and ```Connections``` simple graph
-    - Triggers:
-      - new ```SVC::MySQL::version``` has been changed (severity: Not classified)
-      - new ```SVC::MySQL::cfg::show_compatibility_56=ON``` (severity: High, because this template requires show_compatibility_56=OFF)
-  - **Service Zabbix Proxy**
-    - Applications:
-      - new ```SVC::Zabbix Proxy::proc```
-    - Graphs:
-      - updated:
-        - ```SVC::zabbix_proxy::process busy %```
-        - ```SVC::zabbix_proxy::data gathering process busy %```
-    - Items:
-      - new:
-        - ```proc::busy::configuration syncer```
-        - ```proc::busy::data sender```
-        - ```proc::busy::heartbeat sender```
-        - ```proc::busy::ipmi manager```
-        - ```proc::busy::ipmi poller```
-        - ```proc::busy::java poller```
-        - ```proc::busy::snmp trapper```
-        - ```wcache::index::pfree```
-      - delete items which have been by mistake copied from Service Zabbix Server template
-        - ```wcache::text::free```
-        - ```wcache::text::total```
-        - ```wcache::text::used```
-      - move ```Processes::``` items to ```SVC::Zabbix Proxy::proc``` Application
-      - rename all ```Processes::$4::$2``` to ```proc::$4::$2``` and remove quotes on all those items second key parameter (to allow easy migration from standard "Template App Zabbix Proxy" template)
-    - Triggers:
-      - new:
-        - ```SVC::zabbix_proxy::configuration syncer >=75% busy```
-        - ```SVC::zabbix_proxy::data sender >=75% busy```
-        - ```SVC::zabbix_proxy::heartbeat sender >=75% busy```
-        - ```SVC::zabbix_proxy::ipmi manager >=75% busy```
-        - ```SVC::zabbix_proxy::ipmi poller >=75% busy```
-        - ```SVC::zabbix_proxy::java poller >=75% busy```
-        - ```SVC::zabbix_proxy::snmp trapper >=75% busy```
-        - ```SVC::zabbix_proxy::vmware collector >=75% busy```
-  - **Service Zabbix Server**
-    - Applications:
-      - new:
-        - ```SVC::Zabbix Server::rcache::buffer```
-        - ```SVC::Zabbix Server::vcache::buffer```
-        - ```SVC::Zabbix Server::vcache::cache```
-        - ```SVC::Zabbix Server::wcache::history```
-        - ```SVC::Zabbix Server::wcache::trend```
-        - ```SVC::Zabbix Server::wcache::values```
-      - rename ```SVC::Zabbix Server::process::busy``` to ```SVC::Zabbix Server::proc```
-    - Graphs:
-      - updated ```SVC::zabbix_server::process busy %```
-      - new ```SVC::zabbix_server::preprocessing queue```
-    - Items:
-       - added all items descriptions
-       - new:
-         - ```proc::busy::alert manager %```
-         - ```proc::busy::escalator %```
-         - ```proc::busy::ipmi manager %```
-         - ```proc::busy::ipmi poller %```
-         - ```proc::busy::java poller %```
-         - ```proc::busy::preprocessing manager %```
-         - ```proc::busy::preprocessing worker %```
-         - ```proc::busy::proxy poller %```
-         - ```proc::busy::snmp trapper poller %```
-         - ```proc::busy::task manager %```
-         - ```proc::busy::timer %```
-         - ```proc::busy::vmware collector %```
-         - ```triggers```
-         - ```queue::preprocessing```
-       - remove items::queued (it duplicates information provided by queue::* items)
-       - removed quotes around processes names to make migration from standard zabbix template easier
-       - rename all process::* items to ```proc::*``` (keep it in sync with proxy template)
-       - rename Uptime to ```uptime```
-       - Triggers:
-         - new:                                                           
-           - ```SVC::zabbix_server::alert manager processes >=75% busy```
-           - ```SVC::zabbix_server::escalator processes >=75% busy```
-           - ```SVC::zabbix_server::ipmi manager processes >=75% busy```
-           - ```SVC::zabbix_server::ipmi poller processes >=75% busy```
-           - ```SVC::zabbix_server::java poller processes >=75% busy```
-           - ```SVC::zabbix_server::preprocessing manager processes >=75% busy```
-           - ```SVC::zabbix_server::preprocessing worker processes >=75% busy```
-           - ```SVC::zabbix_server::proxy poller processes >=75% busy```
-           - ```SVC::zabbix_server::snmp trapper processes >=75% busy```
-           - ```SVC::zabbix_server::task manager processes >=75% busy```
-           - ```SVC::zabbix_server::timer processes >=75% busy```
-           - ```SVC::zabbix_server::vmware collector processes >=75% busy``` 
-  - **Service Nginx**
-    - new template
-***
-## List of templates:
-- [ICMP](https://github.com/kloczek/zabbix-templates/tree/master/ICMP)
-- MIB
-  - [F5-BIGIP-LOCAL-MIB](https://github.com/kloczek/zabbix-templates/tree/master/MIB/F5-BIGIP-LOCAL-MIB)
-  - [F5-BIGIP-SYSTEM-MIB](https://github.com/kloczek/zabbix-templates/tree/master/MIB/F5-BIGIP-SYSTEM-MIB)
-  - [IF-MIB](https://github.com/kloczek/zabbix-templates/tree/master/MIB/IF-MIB)
-  - [IP-MIB](https://github.com/kloczek/zabbix-templates/tree/master/MIB/IP-MIB)
-  - [SNMP-MPD-MIB](https://github.com/kloczek/zabbix-templates/tree/master/MIB/SNMP-MPD-MIB)
-  - [SNMP-USER-BASED-SM-MIB](https://github.com/kloczek/zabbix-templates/tree/master/MIB/SNMP-USER-BASED-SM-MIB)
-  - [SNMPv2-MIB](https://github.com/kloczek/zabbix-templates/tree/master/MIB/SNMPv2-MIB)
-  - [SNMP-VIEW-BASED-ACM-MIB](https://github.com/kloczek/zabbix-templates/tree/master/MIB/SNMP-VIEW-BASED-ACM-MIB)
-  - [UDP-MIB](https://github.com/kloczek/zabbix-templates/tree/master/MIB/UDP-MIB)
-- [OS Linux](https://github.com/kloczek/zabbix-templates/tree/master/OS%20Linux)
-- [OS Solaris](https://github.com/kloczek/zabbix-templates/tree/master/OS%20Solaris)
-- [OS Windows](https://github.com/kloczek/zabbix-templates/tree/master/OS%20Windows)
-- SNMP Devices
-  - BIG-IP 5000
-  - DSL-3782
-- [Service Apache](https://github.com/kloczek/zabbix-templates/tree/master/Service%20Apache)
-- [Service MySQL](https://github.com/kloczek/zabbix-templates/tree/master/Service%20MySQL)
-- [Service Nginx](https://github.com/kloczek/zabbix-templates/tree/master/Service%20Nginx)
-- [Service Zabbix Agent](https://github.com/kloczek/zabbix-templates/tree/master/Service%20Zabbix%20Agent)
-- [Service Zabbix Proxy](https://github.com/kloczek/zabbix-templates/tree/master/Service%20Zabbix%20Proxy)
-- [Service Zabbix Server](https://github.com/kloczek/zabbix-templates/tree/master/Service%20Zabbix%20Server)
+product                     OBJECT IDENTIFIER ::=  { jfaInfo 1 }
+setup                       OBJECT IDENTIFIER ::=  { jfaInfo 2 }
+control                     OBJECT IDENTIFIER ::=  { jfaInfo 3 }
+snmpUsm			    		OBJECT IDENTIFIER ::=  { jfaInfo 4 }
+snmpTrap					OBJECT IDENTIFIER ::=  { jfaInfo 5 }
+snmpv3PvtObject				OBJECT IDENTIFIER ::=  { jfaInfo 6 }
+trapNotifications 			OBJECT IDENTIFIER ::=  { jfaInfo 0 }
 
-## Notes and Guidelines:
-* Each template has own version tag which is the copy of the whole zabbix-templates package version tag in which last changes has released
-* Each template in the description field has the last modification date and internal version
-* If it is something which needs to be done to use those templates it is described in each template within description notes
-* Naming convention for the items names, applications and triggers must adhere naming convention using 2-4 letter abbreviations:
-  ```
-  <CLASS>::<Name>
-  <CLASS>::<SUBCLASS>::<Name>
-  ```
-  ##### Items Examples:
-  ```
-  HW::CPU
-  MEM::Total Memory
-  NET::ICMP::Loss
-  NTP::WTS::Clock Frequency Adjustment
-  ```
-  Above provide a parseable name, allowing us to distinguish between and categorise those objects.
-  Such convention allows to handle use the pattern in alarming layer allowing on define actions. For example, send all trigger with SYS:: in the beginning name of the template to exact team.
-  Such pattern is possible to use as part of the general interface on communication with external services.
-* Do not use {HOSTNAME} macros in triggers. In web frontend from Monitoring -> Triggers table has "host" column with the host name of the the active trigger. Repeating second time this hos name in the trigger name it is waste of space on the web page.
-* All zabbix agent items should be specified as ```zabbix agent (active)``` items.
-* All graphs resolution needs to be 1200x300.
-* All SNMP items should be as SNMPv2 and ```{$SNMP_COMMUNITY}``` as SNMP read community name.
+mchipMIBConformance         OBJECT IDENTIFIER ::=  { jfaInfo 8 }
 
-Reason of use in all templates the same graphs resolution, item types and SNMP protocol version and community name is to provide easy way to change those settings across all templates is someone may need this.
+mchipMIBCompliances         OBJECT IDENTIFIER ::= { mchipMIBConformance 1 }
+mchipMIBGroups  			OBJECT IDENTIFIER ::= { mchipMIBConformance 2 }
 
-##### Copyright (C) 2017-2018 Tomasz Kłoczko <kloczek@fedoraproject.org>
 
-##### This program is free software, distributed under the terms of the GNU General Public License Version 2.
+
+  -- ON-OFF          ::=   INTEGER { ON(1), OFF(0) }
+
+MCHPUsmAuthPrivProtocol ::=  TEXTUAL-CONVENTION
+       STATUS  current
+       DESCRIPTION
+           "This textual convention enumerates the authentication and privledge 
+		protocol for USM configuration.
+           "
+       SYNTAX    INTEGER
+ 			{
+				noAuthProtocol(1),
+				hmacMD5Auth(2),
+				hmacSHAAuth(3),
+				noPrivProtocol(4),
+				desPrivProtocol(5),
+				aesPrivProtocol(6)
+			}
+
+
+name    OBJECT-TYPE
+   SYNTAX DisplayString
+   MAX-ACCESS read-only
+   STATUS current
+   DESCRIPTION
+      "Fonte gerenciável"
+   ::= { product 1 }
+   
+
+version    OBJECT-TYPE
+   SYNTAX DisplayString
+   MAX-ACCESS read-only
+   STATUS current
+   DESCRIPTION
+      "Versao 1.0"
+   ::= { product 2 }
+   
+date    OBJECT-TYPE
+   SYNTAX DisplayString
+   MAX-ACCESS read-only
+   STATUS current
+   DESCRIPTION
+      "Data da versao"
+   ::= { product 3 }
+   
+fontealimentacao    OBJECT-TYPE
+    SYNTAX INTEGER { LIGADA(1), DESLIGADA(0) }
+    MAX-ACCESS read-write
+    STATUS current
+    DESCRIPTION 
+        "Controle da fonte"
+    ::= { control 1 }
+
+tensaodesaida    OBJECT-TYPE
+   SYNTAX INTEGER
+   MAX-ACCESS read-only
+   STATUS current
+   DESCRIPTION
+      "Tensao na saida da fonte"
+   ::= { control 2 }	    
+
+correntedesaida    OBJECT-TYPE
+   SYNTAX INTEGER
+   MAX-ACCESS read-only
+   STATUS current
+   DESCRIPTION
+      "Corrente na saida da fonte"
+   ::= { control 3 }
+
+tensaodecarregador    OBJECT-TYPE
+   SYNTAX INTEGER
+   MAX-ACCESS read-only
+   STATUS current
+   DESCRIPTION
+      "Tensao no carregador da fonte"
+   ::= { control 4 }	 
+
+correntedocarregador    OBJECT-TYPE
+   SYNTAX DisplayString (SIZE (0..7))
+   MAX-ACCESS read-only
+   STATUS current
+   DESCRIPTION
+      "Corrente no carregador da fonte"
+   ::= { control 5 }	 
+
+temperatura    OBJECT-TYPE
+   SYNTAX INTEGER
+   MAX-ACCESS read-only
+   STATUS current
+   DESCRIPTION
+      "Temperatura"
+   ::= { control 6 }
+
+modooperacao    OBJECT-TYPE
+    SYNTAX INTEGER { Bateria(1), Rede(0) }
+    MAX-ACCESS read-only
+    STATUS current
+    DESCRIPTION 
+        "Modo de operação da fonte"
+    ::= { control 7 }
+
+vac		OBJECT-TYPE
+   SYNTAX DisplayString
+   MAX-ACCESS read-only
+   STATUS current
+   DESCRIPTION
+      "Tensão da Rede Elétrica"
+   ::= { control 8 }
+
+ratio	OBJECT-TYPE
+   SYNTAX DisplayString
+   MAX-ACCESS read-only
+   STATUS current
+   DESCRIPTION
+      "Carga da Bateria"
+   ::= { control 9 }
+
+evt1    OBJECT-TYPE
+   SYNTAX INTEGER
+   MAX-ACCESS read-only
+   STATUS current
+   DESCRIPTION
+      "Duração Evento AC 1"
+   ::= { control 10 }
+
+evt2    OBJECT-TYPE
+   SYNTAX INTEGER
+   MAX-ACCESS read-only
+   STATUS current
+   DESCRIPTION
+      "Duração Evento AC 2"
+   ::= { control 11 }
+
+evt3    OBJECT-TYPE
+   SYNTAX INTEGER
+   MAX-ACCESS read-only
+   STATUS current
+   DESCRIPTION
+      "Duração Evento AC 3"
+   ::= { control 12 }
+
+evt4    OBJECT-TYPE
+   SYNTAX INTEGER
+   MAX-ACCESS read-only
+   STATUS current
+   DESCRIPTION
+      "Duração Evento AC 4"
+   ::= { control 13 }
+
+evt5    OBJECT-TYPE
+   SYNTAX INTEGER
+   MAX-ACCESS read-only
+   STATUS current
+   DESCRIPTION
+      "Duração Evento AC 5"
+   ::= { control 14 }
+
+evt6    OBJECT-TYPE
+   SYNTAX INTEGER
+   MAX-ACCESS read-only
+   STATUS current
+   DESCRIPTION
+      "Duração Evento AC 6"
+   ::= { control 15 }
+
+evt7    OBJECT-TYPE
+   SYNTAX INTEGER
+   MAX-ACCESS read-only
+   STATUS current
+   DESCRIPTION
+      "Duração Evento AC 7"
+   ::= { control 16 }
+
+evt8    OBJECT-TYPE
+   SYNTAX INTEGER
+   MAX-ACCESS read-only
+   STATUS current
+   DESCRIPTION
+      "Duração Evento AC 8"
+   ::= { control 17 }
+
+evt9    OBJECT-TYPE
+   SYNTAX INTEGER
+   MAX-ACCESS read-only
+   STATUS current
+   DESCRIPTION
+      "Duração Evento AC 9"
+   ::= { control 18 }
+
+evt10    OBJECT-TYPE
+   SYNTAX INTEGER
+   MAX-ACCESS read-only
+   STATUS current
+   DESCRIPTION
+      "Duração Evento AC 10"
+   ::= { control 19 }
+
+model    OBJECT-TYPE
+   SYNTAX INTEGER { 
+				Fonte_Gerenciavel_12V_20A(0),
+				Fonte_Gerenciavel_24V_10A(1),
+				Fonte_Gerenciavel_24V_20A(2), 
+                Fonte_Gerenciavel_48V_8A(3), 
+				Fonte_Gerenciavel_48V_15A(4), 
+				Fonte_Gerenciavel_48V_30A(5)
+			}
+   MAX-ACCESS read-only
+   STATUS current
+   DESCRIPTION
+      "Modelo da Fonte"
+   ::= { control 20 }
+
+battst    OBJECT-TYPE
+    SYNTAX INTEGER { On(1), Off(0) }
+    MAX-ACCESS read-only
+    STATUS current
+    DESCRIPTION 
+        "Teste de Autonomia da Bateria"
+    ::= { control 21 }
+
+durbattst    OBJECT-TYPE
+   SYNTAX INTEGER
+   MAX-ACCESS read-only
+   STATUS current
+   DESCRIPTION
+      "Duração do Teste de Autonomia"
+   ::= { control 22 }
+
+hraftbattst    OBJECT-TYPE
+   SYNTAX INTEGER
+   MAX-ACCESS read-only
+   STATUS current
+   DESCRIPTION
+      "Qte. de Dias desde o último teste Autonomia"
+   ::= { control 23 }
+
+fwver   	OBJECT-TYPE
+   SYNTAX INTEGER
+   MAX-ACCESS read-only
+   STATUS current
+   DESCRIPTION
+      "Versão do FW"
+   ::= { control 24 }	    
+
+gwver   	OBJECT-TYPE
+   SYNTAX INTEGER
+   MAX-ACCESS read-only
+   STATUS current
+   DESCRIPTION
+      "Versão do GERENCIADOR"
+   ::= { control 25 }	    
+
+trapTable OBJECT-TYPE
+    SYNTAX SEQUENCE OF TrapEntry
+    MAX-ACCESS not-accessible
+    STATUS current
+    DESCRIPTION
+        "Trap table"
+    ::= { setup 1 }        
+    
+trapEntry OBJECT-TYPE
+    SYNTAX TrapEntry
+    MAX-ACCESS not-accessible
+    STATUS current
+    DESCRIPTION
+        "Single trap entry containing trap receiver info."
+    INDEX { trapReceiverNumber }
+     ::= { trapTable 1 }
+     
+TrapEntry ::=
+    SEQUENCE {
+        trapReceiverNumber
+            Integer32,
+        trapEnabled
+            Integer32,
+        trapReceiverIPAddress
+            IpAddress,
+        trapCommunity
+            DisplayString
+    }            
+    
+trapReceiverNumber  OBJECT-TYPE
+
+    SYNTAX Integer32(0.. 4)
+    MAX-ACCESS not-accessible
+    STATUS current
+    DESCRIPTION
+        "Index of trap receiver"
+    ::= { trapEntry 1 }
+    
+trapEnabled OBJECT-TYPE
+    SYNTAX INTEGER { no(0),yes(1) }
+    MAX-ACCESS read-write
+    STATUS current
+    DESCRIPTION
+        "Indicates if this trap entry is enabled or not."
+    ::= { trapEntry 2 }
+
+
+trapReceiverIPAddress OBJECT-TYPE
+    SYNTAX  IpAddress
+    MAX-ACCESS  read-write
+    STATUS current
+    DESCRIPTION
+        "Trap receiver IP address"
+    ::= { trapEntry 3 }
+
+trapCommunity OBJECT-TYPE
+    SYNTAX  DisplayString (SIZE (0..7))
+    MAX-ACCESS  read-write
+    STATUS current
+    DESCRIPTION
+        "Trap community to be used by agent to send trap"
+    ::= { trapEntry 4 }
+
+
+mchpUsmUserTable     OBJECT-TYPE
+    SYNTAX       SEQUENCE OF MchpUsmUserEntry
+    MAX-ACCESS   not-accessible
+    STATUS       current
+    DESCRIPTION "This table is used to configure microchip USM.
+		     To get the SNMPv3 access, user need to configure security 
+		     name,authentication,auth password,priv protocol and priv 
+                 password.
+		     
+		    "
+    ::= { snmpUsm 1 }
+
+mchpUsmUserEntry     OBJECT-TYPE
+    SYNTAX       	MchpUsmUserEntry
+    MAX-ACCESS    not-accessible
+    STATUS       	current
+    DESCRIPTION 	"User security configurations for USM.
+                	"
+    INDEX       { usmIndex }
+    ::= { mchpUsmUserTable 1 }
+
+MchpUsmUserEntry   ::= SEQUENCE {
+	    usmIndex		Integer32,
+	    usmSecurityName	SnmpAdminString,
+          usmAuthProtocol     MCHPUsmAuthPrivProtocol,
+          usmAuthKey		KeyChange,
+          usmPrivProtocol     MCHPUsmAuthPrivProtocol,
+          usmPrivKey		KeyChange
+    }
+
+usmIndex	  	OBJECT-TYPE
+    SYNTAX 		Integer32 (1..3)     
+    MAX-ACCESS   not-accessible
+    STATUS       current
+    DESCRIPTION  "Usm configuration index. "
+    ::= { mchpUsmUserEntry 1 }
+
+
+usmSecurityName  OBJECT-TYPE
+    SYNTAX       SnmpAdminString
+    MAX-ACCESS   read-write
+    STATUS       current
+    DESCRIPTION "A human readable string representing the user in
+                 Security Model independent format.
+
+                 The default transformation of the User-based Security
+                 Model dependent security ID to the securityName and
+                 vice versa is the identity function so that the
+                 securityName is the same as the userName.
+                "
+    ::= { mchpUsmUserEntry 2 }
+
+
+usmAuthProtocol OBJECT-TYPE
+    SYNTAX       MCHPUsmAuthPrivProtocol
+    MAX-ACCESS   read-write
+    STATUS       current
+    DESCRIPTION  "Authentication support to the SNMPv3.
+		     If usmAuthProtocol == NoAuthProtocol, then SNMPv3 Stack does 
+		     not support/requires authentication.
+		     If usmAuthProtocol == HMACMD5Auth , supports MD5 auth
+		     If usmAuthProtocol == HMACSHAAuth, supports SHA Auth 	
+                 If a set operation tries to set value as
+                 NoAuthProtocol while the usmPrivProtocol value
+                 for the same userName is not equal to NoPrivProtocol,
+                 then an 'inconsistentValue' error must be returned.
+                 This implies that SNMP command generator (SNMP Manager)
+		     application must first ensure that the usmPrivProtocol is set
+                 to NoPrivProtocol value before it can set
+                 the usmAuthProtocol value to NoAuthProtocol.
+                "
+    ::= { mchpUsmUserEntry 3 }
+
+usmAuthKey OBJECT-TYPE
+    SYNTAX       KeyChange   -- typically (SIZE (0 | 32)) for HMACMD5
+                             -- typically (SIZE (0 | 40)) for HMACSHA
+    MAX-ACCESS   read-write
+    STATUS       current
+    DESCRIPTION  "This object in the MIB is associated to usmAuthProtocol.
+			A secret authentication key is required to establish a secure connection 
+			between snmp agent and manager.
+		    "			
+    ::= { mchpUsmUserEntry 4 }
+
+
+usmPrivProtocol OBJECT-TYPE
+    SYNTAX       MCHPUsmAuthPrivProtocol
+    MAX-ACCESS   read-write
+    STATUS       current
+    DESCRIPTION " A privacy protocol to provide encryption and decryption
+			of SNMPv3 pdu. 
+                "
+    ::= { mchpUsmUserEntry 5 }
+
+usmPrivKey OBJECT-TYPE
+    SYNTAX       KeyChange  -- typically (SIZE (0 | 32)) for DES
+    MAX-ACCESS   read-write
+    STATUS       current
+    DESCRIPTION "This object in the MIB is associated to usmPrivProtocol.
+			A secret privacy key is required to establish a secure connection 
+			between snmp agent and manager.
+
+                "
+    ::= { mchpUsmUserEntry 6 }
+
+
+-- Target MIB 
+
+mchpTargetTable OBJECT-TYPE
+       SYNTAX      SEQUENCE OF MchpTargetEntry
+       MAX-ACCESS      not-accessible
+       STATUS      current
+       DESCRIPTION
+           "A table for SNMP target information. This information is required for
+           generation of SNMP trap notifications."
+       ::= { snmpTrap 1 }
+
+mchpTargetEntry OBJECT-TYPE
+       SYNTAX      MchpTargetEntry
+       MAX-ACCESS      not-accessible
+       STATUS      current
+       DESCRIPTION
+           "A set of SNMP target information.
+           "
+       INDEX { snmpTargetIndex }
+       ::= { mchpTargetTable 1 }
+
+MchpTargetEntry ::= SEQUENCE {
+       snmpTargetIndex          Integer32,
+       snmpTargetMPModel        SnmpMessageProcessingModel,
+       snmpTargetSecurityModel  SnmpSecurityModel,
+       snmpTargetSecurityName   SnmpAdminString,
+       snmpTargetSecurityLevel  SnmpSecurityLevel
+   }
+
+snmpTargetIndex OBJECT-TYPE
+       SYNTAX      Integer32(1..8)
+       MAX-ACCESS  	 not-accessible
+       STATUS      current
+       DESCRIPTION
+           "The locally arbitrary, but unique identifier associated
+            with mchpTargetEntry."
+       ::= { mchpTargetEntry 1 }
+
+snmpTargetMPModel OBJECT-TYPE
+       SYNTAX      SnmpMessageProcessingModel
+       MAX-ACCESS      read-write
+       STATUS      current
+       DESCRIPTION
+           "The Message Processing Model to be used when generating/processing
+            SNMP messages using this entry."
+       ::= { mchpTargetEntry 2 }
+
+snmpTargetSecurityModel OBJECT-TYPE
+       SYNTAX      SnmpSecurityModel (1..2147483647)
+       MAX-ACCESS      read-write
+       STATUS      current
+       DESCRIPTION
+           "The Security Model to be used while generating SNMP
+             messages using this entry.  An implementation may
+             choose to return an inconsistentValue error if an
+             attempt is made to set this variable to a value
+             for a security model which the implementation does
+             not support."
+       ::= { mchpTargetEntry 3 }
+
+snmpTargetSecurityName OBJECT-TYPE
+       SYNTAX      SnmpAdminString
+       MAX-ACCESS      read-write
+       STATUS      current
+       DESCRIPTION
+           "The securityName which identifies the Principal on
+            whose behalf SNMP messages will be generated.
+		"
+       ::= { mchpTargetEntry 4 }
+
+snmpTargetSecurityLevel OBJECT-TYPE
+       SYNTAX      SnmpSecurityLevel
+       MAX-ACCESS      read-write
+       STATUS      current
+       DESCRIPTION
+           "The Level of Security to be used when generating
+            SNMP messages using this entry."
+       ::= { mchpTargetEntry 5 }
+
+   
+snmp-demo-trap NOTIFICATION-TYPE
+	OBJECTS { analogPot0,pushButton,ledD5,trapCommunity}
+	STATUS current
+	DESCRIPTION 
+		"SMIV2 Trap notification information for the SNMP Manager. 
+		The objects used in the demo trap notification are 
+		analogPot0,pushButton,ledD5 and trapCommunity. User should modify this object 
+		information as per the requirements. These object should 
+		have been defined as part of the MIB.
+		"
+	::= {trapNotifications 1}
+	
+	
+mchipDemoCompliance1 MODULE-COMPLIANCE
+    STATUS  current
+	DESCRIPTION
+            "This group is for SNMP demo applications."
+    MODULE  -- this module
+        MANDATORY-GROUPS { mchipDemoGroup1, mchipDemoGroup2}
+
+    ::= { mchipMIBCompliances 1 }
+	
+mchipDemoCompliance2 MODULE-COMPLIANCE
+    STATUS  current
+	DESCRIPTION
+            "This group is for trap demo applications."
+    MODULE  -- this module
+        MANDATORY-GROUPS {mchipDemoGroup3}
+
+    ::= { mchipMIBCompliances 2 }	
+			
+mchipDemoGroup1 OBJECT-GROUP
+    OBJECTS { name, version,date,ledD5,ledD6,pushButton,
+			  analogPot0,analogPot1,lcdDisplay,
+              trapEnabled,trapReceiverIPAddress,trapCommunity}
+    STATUS  current
+    DESCRIPTION
+            "A collection of objects providing basic product
+            and control of a product."
+    ::= { mchipMIBGroups 1 }	
+
+mchipDemoGroup2 OBJECT-GROUP
+    OBJECTS { usmSecurityName,usmAuthProtocol,usmAuthKey,
+			 usmPrivProtocol,usmPrivKey,snmpTargetMPModel,
+			 snmpTargetSecurityModel,snmpTargetSecurityName,
+			 snmpTargetSecurityLevel}
+    STATUS  current
+    DESCRIPTION
+            "A collection of objects are used for SNMPV3 Configuration."
+    ::= { mchipMIBGroups 2 }	
+
+mchipDemoGroup3 NOTIFICATION-GROUP
+    NOTIFICATIONS  {snmp-demo-trap}
+    STATUS  current
+    DESCRIPTION
+            "SNMP Trap Notification object."
+    ::= { mchipMIBGroups 3 }		
+
+END   
